@@ -1,16 +1,23 @@
-letsencrypt/
-traefik/docker-compose.yaml
+# Generated files
+.env
 Caddyfile
-nginx.conf
 huly.conf
 huly_v7.conf
+
+# Secrets
+.secrets/
 .huly.secret
 .cr.secret
 .rp.secret
-.idea
-backup/
-cr-data/
-cr-cert/
+
+# Data volumes
 elastic-data/
 files/
 redpanda/
+pg_data/
+cr-data/
+cr-cert/
+backup/
+
+# IDE
+.idea
