@@ -266,8 +266,8 @@ else
     esac
 fi
 
-echo -e "\033[1;32mSetup is complete!\n Generating nginx.conf...\033[0m"
-./nginx.sh
+echo -e "\033[1;32mSetup is complete!\n Generating Caddyfile...\033[0m"
+./caddy.sh
 
 if [ "$QUICK" == true ]; then
     echo ""

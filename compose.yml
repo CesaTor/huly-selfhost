@@ -1,11 +1,13 @@
 name: ${DOCKER_NAME}
 services:
-  nginx:
-    image: "nginx:1.21.3"
+  caddy:
+    image: "caddy:2-alpine"
     ports:
-      - "${HTTP_BIND}:${HTTP_PORT}:80"
+      - "${HTTP_BIND:-}:${HTTP_PORT}:80"
     volumes:
-      - ./.huly.nginx:/etc/nginx/conf.d/default.conf
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
     networks:
       - huly_net
@@ -276,6 +278,8 @@ volumes:
   cr_certs:
   redpanda:
   mongodb:
+  caddy_data:
+  caddy_config:
 
 networks:
   huly_net:

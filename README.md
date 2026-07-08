@@ -93,24 +93,12 @@ Access Huly at **http://localhost:8087** (wait ~60 seconds for services to initi
 > [!NOTE]
 > Quick start is intended for local testing only. For production deployments, follow the full setup instructions below.
 
-## Installing `nginx` and `docker`
-
-First, update repositories cache:
-
-```bash
-sudo apt update
-```
-
-Now, install `nginx`:
-
-```bash
-sudo apt install nginx
-```
+## Installing `docker`
 
 Install docker using the [recommended method](https://docs.docker.com/engine/install/ubuntu/) from docker website.
 Afterwards perform [post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/). Pay attention to 3rd step with `newgrp docker` command, it needed for correct execution in setup script.
 
-## Clone the `huly-selfhost` repository and configure `nginx`
+## Clone the `huly-selfhost` repository and configure
 
 Next, let's clone the `huly-selfhost` repository and configure Huly.
 
@@ -120,27 +108,18 @@ cd huly-selfhost
 ./setup.sh
 ```
 
-This will generate a [huly_v7.conf](./huly_v7.conf) file with your chosen values and create your nginx config.
-
-To add the generated configuration to your Nginx setup, run the following:
-
-```bash
-sudo ln -s $(pwd)/nginx.conf /etc/nginx/sites-enabled/huly.conf
-```
+This will generate a [huly_v7.conf](./huly_v7.conf) file with your chosen values and create your Caddyfile.
 
 > [!NOTE]
-> If you change `HOST_ADDRESS`, `SECURE`, `HTTP_PORT` or `HTTP_BIND` be sure to update your [nginx.conf](./nginx.conf)
+> If you change `HOST_ADDRESS`, `SECURE`, `HTTP_PORT` or `HTTP_BIND` be sure to update your [Caddyfile](./Caddyfile)
 > by running:
 > ```bash
-> ./nginx.sh
+> ./caddy.sh
 > ```
->You can safely execute this script after adding your custom configurations like ssl. It will only overwrite the
-> necessary settings.
 
-Finally, let's reload `nginx` and start Huly with `docker compose`.
+Finally, start Huly with `docker compose`.
 
 ```bash
-sudo nginx -s reload
 sudo docker compose up -d
 ```
 
@@ -498,7 +477,7 @@ self-hosted Huly, perform the following steps:
         ...
     ```
 
-4. Uncomment love section in `.huly.nginx` file and reload nginx
+4. Uncomment love section in `Caddyfile` and restart caddy
 
 Note that the `LIVEKIT_HOST` should include the protocol (`wss://` by default if using livekit cloud).
 
@@ -542,10 +521,10 @@ This mode does not require Redis and is suitable for single-node or small self-h
       ...
     ```
 
-4. Uncomment the `/_pulse` location in `.huly.nginx` and reload nginx:
+4. Uncomment the `/_pulse` route in `Caddyfile` and restart caddy:
 
     ```bash
-    sudo nginx -s reload
+    docker compose restart caddy
     ```
 
 5. Recreate and start the stack from the `huly-selfhost` folder:
@@ -604,7 +583,7 @@ Redis can be used as an alternative backend for HulyPulse – for example, in mu
         ...
     ```
 
-3. Uncomment print section in `.huly.nginx` file and reload nginx
+3. Uncomment print section in `Caddyfile` and restart caddy
 
 ## Export Service
 
@@ -635,7 +614,7 @@ front:
     ...
     - EXPORT_URL=https://${HOST_ADDRESS}/_export
 ```
-3. Uncomment `_export` route in `.huly.nginx`
+3. Uncomment `_export` route in `Caddyfile`
 
 
 ## AI Service
@@ -698,7 +677,7 @@ Huly provides AI-powered chatbot that provides several services:
           - AI_BOT_URL=http://aibot:4010
         ...
     ```
-5. Uncomment aibot section in `.huly.nginx` file and reload nginx
+5. Uncomment aibot section in `Caddyfile` and restart caddy
 
 > [!NOTE]
 > You can also add the `AI_OPENAI_MODEL`, `AI_OPENAI_TRANSLATE_MODEL`, `AI_OPENAI_SUMMARY_MODEL` environment variables to the aibot service to use a different model, by default it uses `gpt-4o-mini` for all of them
@@ -761,7 +740,7 @@ Ensure you have configured or add the following environment variable to the fron
 
 * ACCOUNTS_URL (This should contain the URL of the account service, accessible from the client side.)
 
-You will need to expose your account service port (e.g. 3000) in your nginx.conf.
+You will need to expose your account service port (e.g. 3000) in your Caddyfile.
 
 Note: Once all the required environment variables are configured, you will see an additional button on the
 sign-in/sign-up pages.
@@ -902,7 +881,7 @@ github:
    ...
 ```
 
-3. Uncomment the github section in `.huly.nginx` file and reload nginx
+3. Uncomment the github section in `Caddyfile` and restart caddy
 
 4. Configure Callback URL and Setup URL (with redirect on update set) to your host: `http${SECURE:+s}://${HOST_ADDRESS}/github`
 
@@ -953,7 +932,7 @@ front:
   ...
 ```
 
-3. Uncomment the _telegram section in the .huly.nginx file.
+3. Uncomment the _telegram section in the `Caddyfile`.
 
 ### Notifications Setup
 

@@ -1,0 +1,91 @@
+:80 {
+	encode gzip
+	request_body {
+		max_size 100MB
+	}
+
+	# Frontend
+	handle {
+		reverse_proxy front:8080
+	}
+
+	# Account service
+	handle_path /_accounts/* {
+		reverse_proxy account:3000
+	}
+
+	# Collaborator (WebSocket)
+	handle_path /_collaborator/* {
+		reverse_proxy collaborator:3078 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Transactor (WebSocket)
+	handle_path /_transactor/* {
+		reverse_proxy transactor:3333 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Transactor JWT tokens (WebSocket)
+	handle /eyJ* {
+		reverse_proxy transactor:3333 {
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Rekoni service
+	handle_path /_rekoni/* {
+		reverse_proxy rekoni:4004
+	}
+
+	# Stats service
+	handle_path /_stats/* {
+		reverse_proxy stats:4900
+	}
+
+	# Uncomment to enable Print service
+	# handle_path /_print/* {
+	#     reverse_proxy print:4005
+	# }
+
+	# Uncomment to enable AI Bot service
+	# handle_path /_aibot/* {
+	#     reverse_proxy aibot:4010
+	# }
+
+	# Uncomment to enable Love service
+	# handle_path /_love/* {
+	#     reverse_proxy love:8096
+	# }
+
+	# Uncomment to enable Pulse service
+	# handle_path /_pulse/* {
+	#     reverse_proxy hulypulse:8099
+	# }
+
+	# Uncomment to enable Telegram Bot
+	# handle_path /_telegram/* {
+	#     reverse_proxy telegram-bot:4020
+	# }
+
+	# Uncomment to enable GitHub integration
+	# handle_path /_github/* {
+	#     reverse_proxy github:3500
+	# }
+
+	# Uncomment to enable Export service
+	# handle_path /_export/* {
+	#     reverse_proxy exports:4009
+	# }
+}
