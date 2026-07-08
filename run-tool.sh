@@ -22,7 +22,7 @@ fi
 source "$CONFIG_FILE"
 
 : "${SECRET:?SECRET missing in $CONFIG_FILE}"
-: "${CR_DB_URL:?CR_DB_URL missing in $CONFIG_FILE}"
+: "${DATABASE_URL:?DATABASE_URL missing in $CONFIG_FILE}"
 : "${HULY_VERSION:?HULY_VERSION missing in $CONFIG_FILE}"
 : "${DOCKER_NAME:?DOCKER_NAME missing in $CONFIG_FILE}"
 
@@ -53,8 +53,8 @@ read -r -a EXTRA_DOCKER_ARGS <<< "${RUN_TOOL_DOCKER_ARGS:-}"
 docker run --rm $TTY \
     --network "$NETWORK" \
     -e SERVER_SECRET="$SECRET" \
-    -e DB_URL="$CR_DB_URL" \
-    -e ACCOUNT_DB_URL="$CR_DB_URL" \
+    -e DB_URL="$DATABASE_URL" \
+    -e ACCOUNT_DB_URL="$DATABASE_URL" \
     -e STORAGE_CONFIG="$STORAGE_CONFIG" \
     -e ACCOUNTS_URL="http://account:3000" \
     -e TRANSACTOR_URL="ws://transactor:3333" \

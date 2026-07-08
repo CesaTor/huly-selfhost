@@ -69,7 +69,7 @@ BACKUP_ABS="$(cd "$BACKUP_DIR" && pwd)"
 
 # Required config values
 : "${SECRET:?SECRET missing in $CONFIG_FILE}"
-: "${CR_DB_URL:?CR_DB_URL missing in $CONFIG_FILE}"
+: "${DATABASE_URL:?DATABASE_URL missing in $CONFIG_FILE}"
 : "${HULY_VERSION:?HULY_VERSION missing in $CONFIG_FILE}"
 : "${DOCKER_NAME:?DOCKER_NAME missing in $CONFIG_FILE}"
 

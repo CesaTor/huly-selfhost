@@ -19,7 +19,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${PG_DATABASE:-huly}
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - ${VOLUME_PG_DATA:-pg_data}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-selfhost} -d ${PG_DATABASE:-huly}"]
       interval: 5s
@@ -459,7 +459,6 @@ volumes:
   files:
   pg_data:
   redpanda:
-  mongodb:
   caddy_data:
   caddy_config:
 
