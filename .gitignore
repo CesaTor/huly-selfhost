@@ -14,9 +14,8 @@ elastic-data/
 files/
 redpanda/
 pg_data/
-cr-data/
-cr-cert/
 backup/
+pg-data/
 
 # IDE
 .idea

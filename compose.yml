@@ -21,7 +21,11 @@ services:
     volumes:
       - ${VOLUME_PG_DATA:-pg_data}:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-selfhost} -d ${PG_DATABASE:-huly}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${PG_USER:-selfhost} -d ${PG_DATABASE:-huly}",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -201,6 +205,10 @@ services:
       - ACCOUNTS_URL=http${SECURE:+s}://${HOST_ADDRESS}/_accounts
       - ACCOUNT_PORT=3000
       - QUEUE_CONFIG=redpanda:9092
+      - OPENID_CLIENT_ID=${OPENID_CLIENT_ID:-}
+      - OPENID_CLIENT_SECRET=${OPENID_CLIENT_SECRET:-}
+      - OPENID_ISSUER=${OPENID_ISSUER:-}
+      - MAIL_URL=http://mail:8097
     depends_on:
       postgres:
         condition: service_healthy
@@ -314,20 +322,19 @@ services:
   #   networks:
   #     - huly_net
 
-  # optional: email notifications (SMTP or Amazon SES)
   # optional: email notifications (requires SMTP config)
-  # mail:
-  #   image: hardcoreeng/mail:${HULY_VERSION}
-  #   environment:
-  #     - PORT=8097
-  #     - SOURCE=${MAIL_SOURCE:-noreply@example.com}
-  #     - SMTP_HOST=${SMTP_HOST}
-  #     - SMTP_PORT=${SMTP_PORT:-587}
-  #     - SMTP_USERNAME=${SMTP_USERNAME}
-  #     - SMTP_PASSWORD=${SMTP_PASSWORD}
-  #   restart: unless-stopped
-  #   networks:
-  #     - huly_net
+  mail:
+    image: hardcoreeng/mail:${HULY_VERSION}
+    environment:
+      - PORT=8097
+      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - huly_net
 
   # optional: audio/video calls (requires LiveKit)
   # love:
