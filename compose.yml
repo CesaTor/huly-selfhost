@@ -47,7 +47,17 @@ services:
       - REDPANDA_SUPERUSER_USERNAME=${REDPANDA_ADMIN_USER}
       - REDPANDA_SUPERUSER_PASSWORD=${REDPANDA_ADMIN_PWD}
     healthcheck:
-      test: ['CMD', 'rpk', 'cluster', 'info', '-X', 'user=${REDPANDA_ADMIN_USER}', '-X', 'pass=${REDPANDA_ADMIN_PWD}']
+      test:
+        [
+          "CMD",
+          "rpk",
+          "cluster",
+          "info",
+          "-X",
+          "user=${REDPANDA_ADMIN_USER}",
+          "-X",
+          "pass=${REDPANDA_ADMIN_PWD}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -60,7 +70,7 @@ services:
     volumes:
       - ${VOLUME_FILES_PATH:-files}:/data
     healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
+      test: ["CMD", "mc", "ready", "local"]
       interval: 5s
       retries: 10
     restart: unless-stopped
@@ -268,7 +278,161 @@ services:
     restart: unless-stopped
     networks:
       - huly_net
-      
+
+  # optional: web push notifications
+  notification:
+    image: hardcoreeng/notification:${HULY_VERSION}
+    environment:
+      - PORT=8091
+      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+      - STATS_URL=http://stats:4900
+      - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
+      - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: email notifications (SMTP or Amazon SES)
+  mail:
+    image: hardcoreeng/mail:${HULY_VERSION}
+    environment:
+      - PORT=8097
+      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      # Amazon SES (alternative to SMTP):
+      # - SES_ACCESS_KEY=${SES_ACCESS_KEY}
+      # - SES_SECRET_KEY=${SES_SECRET_KEY}
+      # - SES_REGION=${SES_REGION}
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: audio/video calls (requires LiveKit)
+  love:
+    image: hardcoreeng/love:${HULY_VERSION}
+    environment:
+      - PORT=8096
+      - SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - DB_URL=${CR_DB_URL}
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - STORAGE_PROVIDER_NAME=minio
+      - LIVEKIT_HOST=${LIVEKIT_HOST}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: print/export to PDF
+  print:
+    image: hardcoreeng/print:${HULY_VERSION}
+    environment:
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - STATS_URL=http://stats:4900
+      - SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: document export
+  exports:
+    image: hardcoreeng/export:${HULY_VERSION}
+    environment:
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - SECRET=${SECRET}
+      - DB_URL=${CR_DB_URL}
+      - ACCOUNTS_URL=http://account:3000
+      - SERVICE_ID=export-service
+      - PORT=4009
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: AI chatbot (requires MongoDB)
+  aibot:
+    image: hardcoreeng/ai-bot:${HULY_VERSION}
+    environment:
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - SERVER_SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - DB_URL=${CR_DB_URL}
+      - MONGO_URL=mongodb://mongodb:27017
+      - STATS_URL=http://stats:4900
+      - FIRST_NAME=Bot
+      - LAST_NAME=Huly AI
+      - PASSWORD=${AIBOT_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      # optional models override:
+      # - OPENAI_MODEL=${OPENAI_MODEL}
+      # - OPENAI_TRANSLATE_MODEL=${OPENAI_TRANSLATE_MODEL}
+      # - OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL}
+      # optional if you use love service:
+      # - LOVE_ENDPOINT=http://love:8096
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: Google Calendar integration (requires MongoDB)
+  calendar:
+    image: hardcoreeng/calendar:${HULY_VERSION}
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=%calendar-service
+      - Credentials=${GOOGLE_CALENDAR_CREDENTIALS}
+      - WATCH_URL=https://${HOST_ADDRESS}/_calendar/push
+      - ACCOUNTS_URL=http://account:3000
+      - STATS_URL=http://stats:4900
+      - SECRET=${SECRET}
+      - KVS_URL=http://kvs:8094
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: GitHub integration
+  github:
+    image: hardcoreeng/github:${HULY_VERSION}
+    environment:
+      - PORT=3500
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - SERVER_SECRET=${SECRET}
+      - ACCOUNTS_URL=http://account:3000
+      - STATS_URL=http://stats:4900
+      - APP_ID=${GITHUB_APPID}
+      - CLIENT_ID=${GITHUB_CLIENTID}
+      - CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+      - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
+      - WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
+      - BOT_NAME=${GITHUB_APP_SLUG}[bot]
+    restart: unless-stopped
+    networks:
+      - huly_net
+
+  # optional: Telegram notifications
+  telegram-bot:
+    image: hardcoreeng/telegram-bot:${HULY_VERSION}
+    environment:
+      - PORT=4020
+      - DB_URL=${CR_DB_URL}
+      - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ACCOUNTS_URL=http://account:3000
+      - SECRET=${SECRET}
+      - SERVICE_ID=telegram-bot-service
+      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+      - QUEUE_CONFIG=redpanda:9092
+      - QUEUE_REGION=
+    restart: unless-stopped
+    networks:
+      - huly_net
+
 volumes:
   # These named volumes are used when custom volume paths are not specified
   # If VOLUME_*_PATH variables are set, these volumes will be ignored
