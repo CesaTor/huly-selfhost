@@ -7,7 +7,6 @@ huly_v7.conf
 # Secrets
 .secrets/
 .huly.secret
-.cr.secret
 .rp.secret
 
 # Data volumes

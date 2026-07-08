@@ -126,7 +126,7 @@ sudo docker compose up -d
 Now, launch your web browser and enjoy Huly! To stop all services, run `docker compose down` from the `huly-selfhost` project directory.
 
 > [!IMPORTANT]
-> Provided configrations include deployments of CockroachDB and Redpanda which might not be production-ready. Please inspect them carefully before using in production. For more information on the recommended deployment configurations, please refer to the [CockroachDB](https://www.cockroachlabs.com/docs/stable/recommended-production-settings) and [Redpanda](https://docs.redpanda.com/24.3/deploy/) documentation.
+> Provided configurations include deployments of PostgreSQL and Redpanda which might not be production-ready. Please inspect them carefully before using in production. For more information on the recommended deployment configurations, please refer to the [PostgreSQL](https://www.postgresql.org/docs/current/admin.html) and [Redpanda](https://docs.redpanda.com/24.3/deploy/) documentation.
 
 ## Troubleshooting
 
@@ -158,8 +158,7 @@ When running `./setup.sh`, you'll be prompted to specify custom paths for:
 
 - **Elasticsearch volume**: Search index data storage  
 - **Files volume**: User-uploaded files and attachments
-- **CockroachDB data volume**: Data storage for workspaces and accounts
-- **CockroachDB certs volume**: Certificates for CockroachDB
+- **PostgreSQL data volume**: Data storage for workspaces and accounts
 - **Redpanda data volume**: Data storage for Kafka
 
 You can either:
@@ -188,18 +187,14 @@ You can also manually configure volume paths by editing the `huly_v7.conf` file:
 # Leave empty to use default Docker named volumes
 VOLUME_ELASTIC_PATH=/path/to/elasticsearch
 VOLUME_FILES_PATH=/path/to/files
-VOLUME_CR_DATA_PATH=/path/to/cockroachdb/data
-VOLUME_CR_CERTS_PATH=/path/to/cockroachdb/certs
-VOLUME_REDPANDA_PATH=/path/to/redpanda/data
-```
+VOLUME_PG_DATA=/path/to/postgres/data
 
 To revert to default volumes, simply leave the paths empty:
 
 ```bash
 VOLUME_ELASTIC_PATH=
 VOLUME_FILES_PATH=
-VOLUME_CR_DATA_PATH=
-VOLUME_CR_CERTS_PATH=
+VOLUME_PG_DATA=
 VOLUME_REDPANDA_PATH=
 ```
 
@@ -456,7 +451,7 @@ self-hosted Huly, perform the following steps:
           - PORT=8096
           - SECRET=${SECRET}
           - ACCOUNTS_URL=http://account:3000
-          - DB_URL=${CR_DB_URL}
+          - DB_URL=${DATABASE_URL}
           - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
           - STORAGE_PROVIDER_NAME=minio
           - LIVEKIT_HOST=<LIVEKIT_HOST>
@@ -597,7 +592,7 @@ exports:
     environment:
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
       - SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - ACCOUNTS_URL=http://account:3000
       - SERVICE_ID=export-service
       - PORT=4009
@@ -641,7 +636,7 @@ Huly provides AI-powered chatbot that provides several services:
           - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
           - SERVER_SECRET=${SECRET}
           - ACCOUNTS_URL=http://account:3000
-          - DB_URL=${CR_DB_URL}
+          - DB_URL=${DATABASE_URL}
           - MONGO_URL=mongodb://mongodb:27017
           - STATS_URL=http://stats:4900
           - FIRST_NAME=Bot
@@ -910,7 +905,7 @@ Telegram Bot Service is responsible for sending notifications from Huly to Teleg
     restart: unless-stopped
     environment:
       - PORT=4020
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - ACCOUNTS_URL=http://account:3000
       - SECRET=${SECRET}

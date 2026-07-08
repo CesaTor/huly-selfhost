@@ -117,9 +117,9 @@ Migration Steps (command examples shown for Docker on macOS):
     -e SERVER_SECRET="$SECRET" \
     -e TRANSACTOR_URL="ws://transactor:3333" \
     -e STORAGE_CONFIG="minio|minio?accessKey=minioadmin&secretKey=minioadmin" \
-    -e ACCOUNT_DB_URL="${CR_DB_URL}" \
+    -e ACCOUNT_DB_URL="${DATABASE_URL}" \
     -e ACCOUNTS_URL="http://account:3000" \
-    -e DB_URL="${CR_DB_URL}" \
+    -e DB_URL="${DATABASE_URL}" \
     -e QUEUE_CONFIG="redpanda:9092" \
     -v ./backup-all:/backup \
     -it hardcoreeng/tool:s0.7.251 \
