@@ -21,16 +21,16 @@ The Huly self-hosted deployment consists of 14 services working together. This s
 
 | Service | Description |
 |---------|-------------|
-| **nginx** | Reverse proxy and SSL termination. Routes external requests to internal services, handles HTTPS certificates, and provides a single entry point for all client connections. |
+| **caddy** | Reverse proxy and automatic HTTPS. Routes external requests to internal services, handles TLS certificates automatically via ACME, and provides a single entry point for all client connections. |
 | **cockroach** | CockroachDB - the primary database. Stores all application data including users, workspaces, documents, and metadata. Provides ACID transactions and horizontal scalability. |
 | **elastic** | Elasticsearch search engine. Stores and indexes document content for fast full-text search queries. Managed by the fulltext service. |
-| **minio** | S3-compatible object storage. Stores all binary files including attachments, images, and document blobs. Accessed directly by nginx for file downloads. |
+| **minio** | S3-compatible object storage. Stores all binary files including attachments, images, and document blobs. Accessed directly by caddy for file downloads. |
 | **redpanda** | Kafka-compatible event streaming platform. Provides reliable message delivery between services for asynchronous processing (e.g., search indexing after document changes). |
 | **kvs (HulyKVS)** | Key-value store service. Provides fast key-value storage for application configuration, user preferences, and cached data. |
 
 ### Service Communication Patterns
 
-- **Synchronous (HTTP/WebSocket)**: Client ↔ Nginx ↔ Services
+- **Synchronous (HTTP/WebSocket)**: Client ↔ Caddy ↔ Services
 - **Asynchronous (Events)**: Transactor → Redpanda → Fulltext
 - **Direct Database**: Services → CockroachDB
 - **File Storage**: Services → MinIO (via S3 API)
@@ -268,7 +268,7 @@ sequenceDiagram
 | Service | Container | Port | Purpose | Dependencies |
 |---------|-----------|------|---------|--------------|
 | **Reverse Proxy** | | | | |
-| nginx | nginx:1.21.3 | 80/443 | Reverse proxy, SSL termination | all services |
+| caddy | caddy:2-alpine | 80/443 | Reverse proxy, automatic HTTPS | all services |
 | **Frontend** | | | | |
 | front | hardcoreeng/front | 8080 | Web application server | account, minio |
 | **Core** | | | | |

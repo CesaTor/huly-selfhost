@@ -1,10 +1,15 @@
 letsencrypt/
 traefik/docker-compose.yaml
+Caddyfile
 nginx.conf
-nginx.conf.bak
 huly.conf
 huly_v7.conf
 .huly.secret
 .cr.secret
 .rp.secret
 .idea
+cr-data/
+cr-cert/
+elastic-data/
+files/
+redpanda/
