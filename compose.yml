@@ -12,16 +12,19 @@ services:
     networks:
       - huly_net
 
-  cockroach:
-    image: cockroachdb/cockroach:latest-v24.2
-    command: start-single-node --accept-sql-without-tls
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - COCKROACH_DATABASE=${CR_DATABASE}
-      - COCKROACH_USER=${CR_USERNAME}
-      - COCKROACH_PASSWORD=${CR_USER_PASSWORD}
+      - POSTGRES_USER=${PG_USER:-selfhost}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${PG_DATABASE:-huly}
     volumes:
-      - ${VOLUME_CR_DATA_PATH:-cr_data}:/cockroach/cockroach-data
-      - ${VOLUME_CR_CERTS_PATH:-cr_certs}:/cockroach/certs
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-selfhost} -d ${PG_DATABASE:-huly}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
     networks:
       - huly_net
@@ -155,14 +158,19 @@ services:
     environment:
       - SERVER_PORT=3333
       - SERVER_SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
-      - FRONT_URL=http://localhost:8087
+      - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
       - ACCOUNTS_URL=http://account:3000
       - FULLTEXT_URL=http://fulltext:4700
       - STATS_URL=http://stats:4900
       - LAST_NAME_FIRST=${LAST_NAME_FIRST:-true}
       - QUEUE_CONFIG=redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - huly_net
@@ -184,15 +192,18 @@ services:
     environment:
       - SERVER_PORT=3000
       - SERVER_SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - TRANSACTOR_URL=ws://transactor:3333;ws${SECURE:+s}://${HOST_ADDRESS}/_transactor
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
       - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
-      - STATS_URL=http${SECURE:+s}://${HOST_ADDRESS}/_stats
+      - STATS_URL=http://stats:4900
       - MODEL_ENABLED=*
       - ACCOUNTS_URL=http${SECURE:+s}://${HOST_ADDRESS}/_accounts
       - ACCOUNT_PORT=3000
       - QUEUE_CONFIG=redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - huly_net
@@ -201,14 +212,19 @@ services:
     image: hardcoreeng/workspace:${HULY_VERSION}
     environment:
       - SERVER_SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - TRANSACTOR_URL=ws://transactor:3333;ws${SECURE:+s}://${HOST_ADDRESS}/_transactor
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
       - MODEL_ENABLED=*
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - QUEUE_CONFIG=redpanda:9092
-      - ACCOUNTS_DB_URL=${CR_DB_URL}
+      - ACCOUNTS_DB_URL=${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     # - INIT_REPO_DIR=/no-init-scripts
     restart: unless-stopped
     networks:
@@ -226,7 +242,7 @@ services:
       - CALENDAR_URL=http${SECURE:+s}://${HOST_ADDRESS}/_calendar
       - GMAIL_URL=http${SECURE:+s}://${HOST_ADDRESS}/_gmail
       - TELEGRAM_URL=http${SECURE:+s}://${HOST_ADDRESS}/_telegram
-      - STATS_URL=http${SECURE:+s}://${HOST_ADDRESS}/_stats
+      - STATS_URL=http://stats:4900
       - UPLOAD_URL=/files
       - ELASTIC_URL=http://elastic:9200
       - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
@@ -244,7 +260,7 @@ services:
     image: hardcoreeng/fulltext:${HULY_VERSION}
     environment:
       - SERVER_SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - FULLTEXT_DB_URL=http://elastic:9200
       - ELASTIC_INDEX_NAME=huly_storage_index
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
@@ -252,6 +268,13 @@ services:
       - ACCOUNTS_URL=http://account:3000
       - STATS_URL=http://stats:4900
       - QUEUE_CONFIG=redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elastic:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - huly_net
@@ -267,65 +290,61 @@ services:
 
   kvs:
     image: hardcoreeng/hulykvs:${HULY_VERSION}
-    depends_on:
-      cockroach:
-        condition: service_started
-    ports:
-      - 8094:8094
     environment:
-      - HULY_DB_CONNECTION=${CR_DB_URL}
+      - HULY_DB_CONNECTION=${DATABASE_URL}
       - HULY_TOKEN_SECRET=${SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - huly_net
 
   # optional: web push notifications
-  notification:
-    image: hardcoreeng/notification:${HULY_VERSION}
-    environment:
-      - PORT=8091
-      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
-      - STATS_URL=http://stats:4900
-      - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
-      - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # notification:
+  #   image: hardcoreeng/notification:${HULY_VERSION}
+  #   environment:
+  #     - PORT=8091
+  #     - SERVER_SECRET=${SECRET}
+  #     - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+  #     - STATS_URL=http://stats:4900
+  #     - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
+  #     - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: email notifications (SMTP or Amazon SES)
-  mail:
-    image: hardcoreeng/mail:${HULY_VERSION}
-    environment:
-      - PORT=8097
-      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      # Amazon SES (alternative to SMTP):
-      # - SES_ACCESS_KEY=${SES_ACCESS_KEY}
-      # - SES_SECRET_KEY=${SES_SECRET_KEY}
-      # - SES_REGION=${SES_REGION}
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # optional: email notifications (requires SMTP config)
+  # mail:
+  #   image: hardcoreeng/mail:${HULY_VERSION}
+  #   environment:
+  #     - PORT=8097
+  #     - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+  #     - SMTP_HOST=${SMTP_HOST}
+  #     - SMTP_PORT=${SMTP_PORT:-587}
+  #     - SMTP_USERNAME=${SMTP_USERNAME}
+  #     - SMTP_PASSWORD=${SMTP_PASSWORD}
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: audio/video calls (requires LiveKit)
-  love:
-    image: hardcoreeng/love:${HULY_VERSION}
-    environment:
-      - PORT=8096
-      - SECRET=${SECRET}
-      - ACCOUNTS_URL=http://account:3000
-      - DB_URL=${CR_DB_URL}
-      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
-      - STORAGE_PROVIDER_NAME=minio
-      - LIVEKIT_HOST=${LIVEKIT_HOST}
-      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
-      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # love:
+  #   image: hardcoreeng/love:${HULY_VERSION}
+  #   environment:
+  #     - PORT=8096
+  #     - SECRET=${SECRET}
+  #     - ACCOUNTS_URL=http://account:3000
+  #     - DB_URL=${DATABASE_URL}
+  #     - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+  #     - STORAGE_PROVIDER_NAME=minio
+  #     - LIVEKIT_HOST=${LIVEKIT_HOST}
+  #     - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+  #     - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: print/export to PDF
   print:
@@ -346,7 +365,7 @@ services:
     environment:
       - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
       - SECRET=${SECRET}
-      - DB_URL=${CR_DB_URL}
+      - DB_URL=${DATABASE_URL}
       - ACCOUNTS_URL=http://account:3000
       - SERVICE_ID=export-service
       - PORT=4009
@@ -355,91 +374,90 @@ services:
       - huly_net
 
   # optional: AI chatbot (requires MongoDB)
-  aibot:
-    image: hardcoreeng/ai-bot:${HULY_VERSION}
-    environment:
-      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
-      - SERVER_SECRET=${SECRET}
-      - ACCOUNTS_URL=http://account:3000
-      - DB_URL=${CR_DB_URL}
-      - MONGO_URL=mongodb://mongodb:27017
-      - STATS_URL=http://stats:4900
-      - FIRST_NAME=Bot
-      - LAST_NAME=Huly AI
-      - PASSWORD=${AIBOT_PASSWORD}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
-      # optional models override:
-      # - OPENAI_MODEL=${OPENAI_MODEL}
-      # - OPENAI_TRANSLATE_MODEL=${OPENAI_TRANSLATE_MODEL}
-      # - OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL}
-      # optional if you use love service:
-      # - LOVE_ENDPOINT=http://love:8096
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # aibot:
+  #   image: hardcoreeng/ai-bot:${HULY_VERSION}
+  #   environment:
+  #     - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+  #     - SERVER_SECRET=${SECRET}
+  #     - ACCOUNTS_URL=http://account:3000
+  #     - DB_URL=${DATABASE_URL}
+  #     - MONGO_URL=mongodb://mongodb:27017
+  #     - STATS_URL=http://stats:4900
+  #     - FIRST_NAME=Bot
+  #     - LAST_NAME=Huly AI
+  #     - PASSWORD=${AIBOT_PASSWORD}
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #     - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+  #     # optional models override:
+  #     # - OPENAI_MODEL=${OPENAI_MODEL}
+  #     # - OPENAI_TRANSLATE_MODEL=${OPENAI_TRANSLATE_MODEL}
+  #     # - OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL}
+  #     # optional if you use love service:
+  #     # - LOVE_ENDPOINT=http://love:8096
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: Google Calendar integration (requires MongoDB)
-  calendar:
-    image: hardcoreeng/calendar:${HULY_VERSION}
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017
-      - MONGO_DB=%calendar-service
-      - Credentials=${GOOGLE_CALENDAR_CREDENTIALS}
-      - WATCH_URL=https://${HOST_ADDRESS}/_calendar/push
-      - ACCOUNTS_URL=http://account:3000
-      - STATS_URL=http://stats:4900
-      - SECRET=${SECRET}
-      - KVS_URL=http://kvs:8094
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # calendar:
+  #   image: hardcoreeng/calendar:${HULY_VERSION}
+  #   environment:
+  #     - MONGO_URI=mongodb://mongodb:27017
+  #     - MONGO_DB=%calendar-service
+  #     - Credentials=${GOOGLE_CALENDAR_CREDENTIALS}
+  #     - WATCH_URL=https://${HOST_ADDRESS}/_calendar/push
+  #     - ACCOUNTS_URL=http://account:3000
+  #     - STATS_URL=http://stats:4900
+  #     - SECRET=${SECRET}
+  #     - KVS_URL=http://kvs:8094
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: GitHub integration
-  github:
-    image: hardcoreeng/github:${HULY_VERSION}
-    environment:
-      - PORT=3500
-      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
-      - SERVER_SECRET=${SECRET}
-      - ACCOUNTS_URL=http://account:3000
-      - STATS_URL=http://stats:4900
-      - APP_ID=${GITHUB_APPID}
-      - CLIENT_ID=${GITHUB_CLIENTID}
-      - CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
-      - PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
-      - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
-      - WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
-      - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
-      - BOT_NAME=${GITHUB_APP_SLUG}[bot]
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # github:
+  #   image: hardcoreeng/github:${HULY_VERSION}
+  #   environment:
+  #     - PORT=3500
+  #     - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+  #     - SERVER_SECRET=${SECRET}
+  #     - ACCOUNTS_URL=http://account:3000
+  #     - STATS_URL=http://stats:4900
+  #     - APP_ID=${GITHUB_APPID}
+  #     - CLIENT_ID=${GITHUB_CLIENTID}
+  #     - CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+  #     - PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+  #     - COLLABORATOR_URL=ws${SECURE:+s}://${HOST_ADDRESS}/_collaborator
+  #     - WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+  #     - FRONT_URL=http${SECURE:+s}://${HOST_ADDRESS}
+  #     - BOT_NAME=${GITHUB_APP_SLUG}[bot]
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
   # optional: Telegram notifications
-  telegram-bot:
-    image: hardcoreeng/telegram-bot:${HULY_VERSION}
-    environment:
-      - PORT=4020
-      - DB_URL=${CR_DB_URL}
-      - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - ACCOUNTS_URL=http://account:3000
-      - SECRET=${SECRET}
-      - SERVICE_ID=telegram-bot-service
-      - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
-      - QUEUE_CONFIG=redpanda:9092
-      - QUEUE_REGION=
-    restart: unless-stopped
-    networks:
-      - huly_net
+  # telegram-bot:
+  #   image: hardcoreeng/telegram-bot:${HULY_VERSION}
+  #   environment:
+  #     - PORT=4020
+  #     - DB_URL=${DATABASE_URL}
+  #     - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+  #     - ACCOUNTS_URL=http://account:3000
+  #     - SECRET=${SECRET}
+  #     - SERVICE_ID=telegram-bot-service
+  #     - STORAGE_CONFIG=minio|minio?accessKey=minioadmin&secretKey=minioadmin
+  #     - QUEUE_CONFIG=redpanda:9092
+  #     - QUEUE_REGION=
+  #   restart: unless-stopped
+  #   networks:
+  #     - huly_net
 
 volumes:
   # These named volumes are used when custom volume paths are not specified
   # If VOLUME_*_PATH variables are set, these volumes will be ignored
   elastic:
   files:
-  cr_data:
-  cr_certs:
+  pg_data:
   redpanda:
   mongodb:
   caddy_data:
