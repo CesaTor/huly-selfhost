@@ -110,7 +110,7 @@ services:
     image: mongo:7-jammy
     restart: unless-stopped
     volumes:
-      - ${VOLUME_MONGO_PATH:-mongodb}:/data/db
+      - ${VOLUME_MONGO_PATH:-mongo_data}:/data/db
     networks:
       - huly_net
     # Required by aibot and calendar services
@@ -465,6 +465,7 @@ volumes:
   elastic:
   files:
   pg_data:
+  mongo_data:
   redpanda:
   caddy_data:
   caddy_config:
