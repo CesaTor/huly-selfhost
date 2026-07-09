@@ -106,14 +106,14 @@ services:
     networks:
       - huly_net
 
-  # mongodb:
-  #   image: mongo:7-jammy
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ${VOLUME_MONGO_PATH:-mongodb}:/data/db
-  #   networks:
-  #     - huly_net
-  #   # Required by aibot and calendar services
+  mongodb:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    volumes:
+      - ${VOLUME_MONGO_PATH:-mongodb}:/data/db
+    networks:
+      - huly_net
+    # Required by aibot and calendar services
 
   # redis:
   #   image: redis:7-alpine
@@ -309,18 +309,18 @@ services:
       - huly_net
 
   # optional: web push notifications
-  # notification:
-  #   image: hardcoreeng/notification:${HULY_VERSION}
-  #   environment:
-  #     - PORT=8091
-  #     - SERVER_SECRET=${SECRET}
-  #     - SOURCE=${MAIL_SOURCE:-noreply@example.com}
-  #     - STATS_URL=http://stats:4900
-  #     - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
-  #     - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}
-  #   restart: unless-stopped
-  #   networks:
-  #     - huly_net
+  notification:
+    image: hardcoreeng/notification:${HULY_VERSION}
+    environment:
+      - PORT=8091
+      - SERVER_SECRET=${SECRET}
+      - SOURCE=${MAIL_SOURCE:-noreply@example.com}
+      - STATS_URL=http://stats:4900
+      - PUSH_PUBLIC_KEY=${PUSH_PUBLIC_KEY}
+      - PUSH_PRIVATE_KEY=${PUSH_PRIVATE_KEY}
+    restart: unless-stopped
+    networks:
+      - huly_net
 
   # optional: email notifications (requires SMTP config)
   mail:
@@ -406,20 +406,20 @@ services:
   #     - huly_net
 
   # optional: Google Calendar integration (requires MongoDB)
-  # calendar:
-  #   image: hardcoreeng/calendar:${HULY_VERSION}
-  #   environment:
-  #     - MONGO_URI=mongodb://mongodb:27017
-  #     - MONGO_DB=%calendar-service
-  #     - Credentials=${GOOGLE_CALENDAR_CREDENTIALS}
-  #     - WATCH_URL=https://${HOST_ADDRESS}/_calendar/push
-  #     - ACCOUNTS_URL=http://account:3000
-  #     - STATS_URL=http://stats:4900
-  #     - SECRET=${SECRET}
-  #     - KVS_URL=http://kvs:8094
-  #   restart: unless-stopped
-  #   networks:
-  #     - huly_net
+  calendar:
+    image: hardcoreeng/calendar:${HULY_VERSION}
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=%calendar-service
+      - Credentials=${GOOGLE_CALENDAR_CREDENTIALS}
+      - WATCH_URL=https://${HOST_ADDRESS}/_calendar/push
+      - ACCOUNTS_URL=http://account:3000
+      - STATS_URL=http://stats:4900
+      - SECRET=${SECRET}
+      - KVS_URL=http://kvs:8094
+    restart: unless-stopped
+    networks:
+      - huly_net
 
   # optional: GitHub integration
   # github:
